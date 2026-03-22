@@ -665,45 +665,110 @@ export const emailRouter = router({
           maxRetries: 3,
         });
 
-        // Save email logs with content
+        // Save email logs with content - with retry mechanism
         console.log(`Saving ${emailsToSend.length} email logs for task ${taskId}`);
+        const failedLogs: Array<{ email: any; result: any; attempt: number }> = [];
+        
         for (let i = 0; i < emailsToSend.length; i++) {
           const emailToSend = emailsToSend[i];
           const result = results[i];
+          let logCreated = false;
+          let attempts = 0;
+          const maxAttempts = 3;
           
-          try {
-            console.log(`Creating log for email ${i+1}/${emailsToSend.length}: ${emailToSend.to} - status: ${result?.success ? 'success' : 'failed'}`);
-            await createEmailLog({
-              taskId,
-              recipientEmail: emailToSend.to,
-              recipientName: emailToSend.to.split('@')[0],
-              subject: emailToSend.subject,
-              emailContent: emailToSend.html,
-              senderEmail: smtpConfig.senderEmail,
-              status: result?.success ? 'success' : 'failed',
-              errorMessage: result?.error || null,
-              sentAt: result?.success ? new Date() : null,
-              retryCount: result?.retryCount || 0,
-            });
-            console.log(`Successfully created log for email ${emailToSend.to}`);
-          } catch (logError) {
-            console.error(`Failed to save email log for ${emailToSend.to}:`, logError);
+          while (!logCreated && attempts < maxAttempts) {
+            attempts++;
+            try {
+              console.log(`Creating log for email ${i+1}/${emailsToSend.length}: ${emailToSend.to} - status: ${result?.success ? 'success' : 'failed'} (attempt ${attempts}/${maxAttempts})`);
+              await createEmailLog({
+                taskId,
+                recipientEmail: emailToSend.to,
+                recipientName: emailToSend.to.split('@')[0],
+                subject: emailToSend.subject,
+                emailContent: emailToSend.html,
+                senderEmail: smtpConfig.senderEmail,
+                status: result?.success ? 'success' : 'failed',
+                errorMessage: result?.error || null,
+                sentAt: result?.success ? new Date() : null,
+                retryCount: result?.retryCount || 0,
+              });
+              console.log(`Successfully created log for email ${emailToSend.to}`);
+              logCreated = true;
+            } catch (logError) {
+              console.error(`Failed to save email log for ${emailToSend.to} (attempt ${attempts}):`, logError);
+              if (attempts < maxAttempts) {
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 500 * attempts));
+              } else {
+                // Store for later retry
+                failedLogs.push({ email: emailToSend, result, attempt: attempts });
+              }
+            }
           }
           
-          if (result?.success) {
-            successCount++;
-          } else {
-            failureCount++;
+          if (logCreated) {
+            if (result?.success) {
+              successCount++;
+            } else {
+              failureCount++;
+            }
           }
         }
+        
+        // Retry failed logs one more time
+        if (failedLogs.length > 0) {
+          console.log(`Retrying ${failedLogs.length} failed log creations...`);
+          for (const failedLog of failedLogs) {
+            try {
+              await createEmailLog({
+                taskId,
+                recipientEmail: failedLog.email.to,
+                recipientName: failedLog.email.to.split('@')[0],
+                subject: failedLog.email.subject,
+                emailContent: failedLog.email.html,
+                senderEmail: smtpConfig.senderEmail,
+                status: failedLog.result?.success ? 'success' : 'failed',
+                errorMessage: failedLog.result?.error || null,
+                sentAt: failedLog.result?.success ? new Date() : null,
+                retryCount: failedLog.result?.retryCount || 0,
+              });
+              if (failedLog.result?.success) {
+                successCount++;
+              } else {
+                failureCount++;
+              }
+            } catch (error) {
+              console.error(`Final retry failed for ${failedLog.email.to}:`, error);
+            }
+          }
+        }
+        
         console.log(`Email logs saved: success=${successCount}, failed=${failureCount}`);
 
-        await updateEmailTask(taskId, {
-          status: 'completed',
-          endTime: new Date(),
-          successCount: successCount,
-          failureCount: failureCount,
-        });
+        // Force update task with retry
+        let taskUpdated = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await updateEmailTask(taskId, {
+              status: 'completed',
+              endTime: new Date(),
+              successCount: successCount,
+              failureCount: failureCount,
+            });
+            taskUpdated = true;
+            console.log(`Task ${taskId} updated successfully with counts: success=${successCount}, failed=${failureCount}`);
+            break;
+          } catch (error) {
+            console.error(`Failed to update task ${taskId} (attempt ${attempt + 1}):`, error);
+            if (attempt < 2) {
+              await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+            }
+          }
+        }
+        
+        if (!taskUpdated) {
+          console.error(`Failed to update task ${taskId} after 3 attempts`);
+        }
 
         return {
           success: true,
