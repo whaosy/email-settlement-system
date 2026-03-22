@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `emailLogs` ADD `emailContent` text;\nALTER TABLE `emailLogs` ADD `senderEmail` varchar(320);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2XdBRwksaKEYCkR.root --database 3sCHnfZFrkuEk3LGdyHhMT --execute ALTER TABLE `emailLogs` ADD `emailContent` text;\nALTER TABLE `emailLogs` ADD `senderEmail` varchar(320);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2245
+}

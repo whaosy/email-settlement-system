@@ -1,0 +1,15 @@
+{
+  "query": "SELECT COUNT(*) as total_logs, COUNT(CASE WHEN status = 'success' THEN 1 END) as success_count, COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count FROM email_logs LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2XdBRwksaKEYCkR.root --database 3sCHnfZFrkuEk3LGdyHhMT --execute SELECT COUNT(*) as total_logs, COUNT(CASE WHEN status = 'success' THEN 1 END) as success_count, COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count FROM email_logs LIMIT 10;",
+  "rows": [
+    {
+      "total_logs": "0",
+      "success_count": "0",
+      "failed_count": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_logs\tsuccess_count\tfailed_count\n0\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1661
+}

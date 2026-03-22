@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1773105945489,
+      "tag": "0000_unknown_infant_terrible",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773106427098,
+      "tag": "0001_organic_justice",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774067977639,
+      "tag": "0002_clear_the_executioner",
+      "breakpoints": true
+    }
+  ]
+}
