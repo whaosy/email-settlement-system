@@ -138,3 +138,30 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
     url: await buildDownloadUrl(baseUrl, key, apiKey),
   };
 }
+
+export async function storageFetch(urlOrKey: string): Promise<Buffer> {
+  // If it's a local storage URL, read from file system
+  if (urlOrKey.startsWith(LOCAL_STORAGE_URL_PREFIX)) {
+    const relKey = urlOrKey.replace(LOCAL_STORAGE_URL_PREFIX, '');
+    const localPath = path.join(LOCAL_STORAGE_DIR, normalizeKey(relKey));
+    if (fs.existsSync(localPath)) {
+      return fs.readFileSync(localPath);
+    }
+    throw new Error(`Local file not found: ${localPath}`);
+  }
+
+  // If it's a relative key and not a full URL, try to get the download URL
+  let finalUrl = urlOrKey;
+  if (!urlOrKey.startsWith('http')) {
+    const { url } = await storageGet(urlOrKey);
+    finalUrl = url;
+  }
+
+  // Fetch from remote URL
+  const response = await fetch(finalUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.status} ${response.statusText} (URL: ${finalUrl})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}

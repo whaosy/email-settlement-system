@@ -7,6 +7,7 @@ import {
 } from '../db';
 import { generateEmailPreviews, generateSingleEmailPreview } from '../utils/emailPreview';
 import { buildMerchantEmailMapping, parseExcelFile } from '../utils/excel';
+import { storageFetch } from '../storage';
 
 export const emailPreviewRouter = router({
   // Generate email previews
@@ -31,22 +32,9 @@ export const emailPreviewRouter = router({
           });
         }
 
-        // Fetch data file from storage (fileKey is now the actual URL)
-        const dataFileUrl = input.dataFileKey.startsWith('http') ? input.dataFileKey : `https://manus-storage.s3.amazonaws.com/${input.dataFileKey}`;
-        console.log('Fetching data file from storage:', dataFileUrl);
-        
-        let dataFileResponse;
-        try {
-          dataFileResponse = await fetch(dataFileUrl);
-          if (!dataFileResponse.ok) {
-            throw new Error(`Failed to fetch file from S3: ${dataFileResponse.status} ${dataFileResponse.statusText}`);
-          }
-        } catch (fetchError) {
-          console.error('S3 fetch error:', fetchError);
-          throw new Error(`Failed to fetch data file from S3: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-        }
-        
-        const dataFileBuffer = await dataFileResponse.arrayBuffer();
+        // Fetch data file from storage
+        console.log('Fetching data file from storage:', input.dataFileKey);
+        const dataFileBuffer = await storageFetch(input.dataFileKey);
         if (!dataFileBuffer || dataFileBuffer.byteLength === 0) {
           throw new Error('Data file is empty or invalid');
         }
@@ -54,26 +42,19 @@ export const emailPreviewRouter = router({
         // Parse mapping file if provided
         let merchantEmailMapping: Record<string, string[]> = {};
         if (input.mappingFileKey) {
-          const mappingFileUrl = input.mappingFileKey.startsWith('http') ? input.mappingFileKey : `https://manus-storage.s3.amazonaws.com/${input.mappingFileKey}`;
-          console.log('Fetching mapping file from storage:', mappingFileUrl);
-          
+          console.log('Fetching mapping file from storage:', input.mappingFileKey);
           try {
-            const mappingFileResponse = await fetch(mappingFileUrl);
-            if (!mappingFileResponse.ok) {
-              console.warn(`Failed to fetch mapping file from S3: ${mappingFileResponse.status}`);
-            } else {
-              const mappingFileBuffer = await mappingFileResponse.arrayBuffer();
-              if (mappingFileBuffer && mappingFileBuffer.byteLength > 0) {
-                const mappingFileParsed = await parseExcelFile(Buffer.from(mappingFileBuffer));
-                if (mappingFileParsed.success && mappingFileParsed.sheetNames && mappingFileParsed.sheets) {
-                  const mappingSheetName = mappingFileParsed.sheetNames[0];
-                  const mappingData = mappingFileParsed.sheets[mappingSheetName] || [];
-                  merchantEmailMapping = buildMerchantEmailMapping(
-                    mappingData,
-                    input.merchantColumn,
-                    input.emailColumn
-                  );
-                }
+            const mappingFileBuffer = await storageFetch(input.mappingFileKey);
+            if (mappingFileBuffer && mappingFileBuffer.byteLength > 0) {
+              const mappingFileParsed = await parseExcelFile(mappingFileBuffer);
+              if (mappingFileParsed.success && mappingFileParsed.sheetNames && mappingFileParsed.sheets) {
+                const mappingSheetName = mappingFileParsed.sheetNames[0];
+                const mappingData = mappingFileParsed.sheets[mappingSheetName] || [];
+                merchantEmailMapping = buildMerchantEmailMapping(
+                  mappingData,
+                  input.merchantColumn,
+                  input.emailColumn
+                );
               }
             }
           } catch (mappingError) {
@@ -83,7 +64,7 @@ export const emailPreviewRouter = router({
 
         // Generate previews
         const previews = await generateEmailPreviews(
-          Buffer.from(dataFileBuffer),
+          dataFileBuffer,
           template.subject,
           template.body,
           merchantEmailMapping
@@ -123,29 +104,16 @@ export const emailPreviewRouter = router({
           });
         }
 
-        // Fetch data file from storage (fileKey is now the actual URL)
-        const dataFileUrl = input.dataFileKey.startsWith('http') ? input.dataFileKey : `https://manus-storage.s3.amazonaws.com/${input.dataFileKey}`;
-        console.log('Fetching data file from storage:', dataFileUrl);
-        
-        let dataFileResponse;
-        try {
-          dataFileResponse = await fetch(dataFileUrl);
-          if (!dataFileResponse.ok) {
-            throw new Error(`Failed to fetch file from S3: ${dataFileResponse.status} ${dataFileResponse.statusText}`);
-          }
-        } catch (fetchError) {
-          console.error('S3 fetch error:', fetchError);
-          throw new Error(`Failed to fetch data file from S3: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-        }
-        
-        const dataFileBuffer = await dataFileResponse.arrayBuffer();
+        // Fetch data file from storage
+        console.log('Fetching data file from storage:', input.dataFileKey);
+        const dataFileBuffer = await storageFetch(input.dataFileKey);
         if (!dataFileBuffer || dataFileBuffer.byteLength === 0) {
           throw new Error('Data file is empty or invalid');
         }
 
         // Generate preview
         const preview = await generateSingleEmailPreview(
-          Buffer.from(dataFileBuffer),
+          dataFileBuffer,
           template.subject,
           template.body,
           input.merchantName,

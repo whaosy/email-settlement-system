@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -38,48 +38,57 @@ export default function EmailPreviewDialog({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sanitizedHtml, setSanitizedHtml] = useState('');
 
-  if (emails.length === 0) {
+  if (!emails || emails.length === 0) {
     return null;
   }
 
-  const currentEmail = emails[currentIndex];
-  const hasNext = currentIndex < emails.length - 1;
-  const hasPrev = currentIndex > 0;
+  // Ensure currentIndex is within bounds
+  const safeIndex = Math.min(currentIndex, emails.length - 1);
+  const currentEmail = emails[safeIndex];
+  const hasNext = safeIndex < emails.length - 1;
+  const hasPrev = safeIndex > 0;
 
   // Sanitize HTML to prevent DOM errors
   useEffect(() => {
-    if (!currentEmail.html) {
+    if (!currentEmail || !currentEmail.html) {
       setSanitizedHtml('');
       return;
     }
     
-    // Create a temporary container to parse HTML
-    const temp = document.createElement('div');
-    temp.innerHTML = currentEmail.html;
-    
-    // Remove potentially problematic elements
-    const scripts = temp.querySelectorAll('script, style, iframe');
-    scripts.forEach(el => el.remove());
-    
-    setSanitizedHtml(temp.innerHTML);
-  }, [currentEmail.html]);
+    try {
+      // Create a temporary container to parse HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = currentEmail.html;
+      
+      // Remove potentially problematic elements
+      const scripts = temp.querySelectorAll('script, style, iframe');
+      scripts.forEach(el => el.remove());
+      
+      setSanitizedHtml(temp.innerHTML);
+    } catch (error) {
+      console.error('Failed to sanitize HTML:', error);
+      setSanitizedHtml(currentEmail.html || '');
+    }
+  }, [currentIndex, emails.length]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (hasNext) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(prev => prev + 1);
     }
-  };
+  }, [hasNext]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (hasPrev) {
-      setCurrentIndex(currentIndex - 1);
+      setCurrentIndex(prev => prev - 1);
     }
-  };
+  }, [hasPrev]);
 
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(currentEmail.to);
-    toast.success('邮箱地址已复制');
-  };
+  const handleCopyEmail = useCallback(() => {
+    if (currentEmail && currentEmail.to) {
+      navigator.clipboard.writeText(currentEmail.to);
+      toast.success('邮箱地址已复制');
+    }
+  }, [currentEmail?.to]);
 
 
 
@@ -164,13 +173,13 @@ export default function EmailPreviewDialog({
                 <div className="p-4 min-h-full">
                   {/* Render HTML content safely */}
                   <div
-                    className="prose prose-sm max-w-none text-slate-900 break-words"
+                    className="prose prose-sm max-w-none text-slate-900 break-words rich-text-editor-content"
                     style={{
                       wordBreak: 'break-word',
                       overflowWrap: 'break-word',
                     }}
                   >
-                    {sanitizedHtml ? (
+                    {sanitizedHtml && sanitizedHtml.trim() ? (
                       <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
                     ) : (
                       <p className="text-slate-500">邮件内容为空</p>

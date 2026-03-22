@@ -20,7 +20,7 @@ import {
   createScheduledJob,
   updateScheduledJob,
 } from '../db';
-import { storagePut } from '../storage';
+import { storagePut, storageFetch } from '../storage';
 import { parseExcelFile, replaceTemplateVariables, extractTemplateVariables, arrayToHtmlTable, buildMerchantEmailMapping, calculateColumnSum, generateEmailContent } from '../utils/excel';
 import { encryptAuthCode, decryptAuthCode, createSmtpTransporter, testSmtpConnection, batchSendEmails } from '../utils/emailService';
 import { scheduleTask, cancelTask } from '../utils/scheduler';
@@ -557,22 +557,9 @@ export const emailRouter = router({
         let failureCount = 0;
         const emailsToSend: Array<{ to: string; subject: string; html: string }> = [];
 
-        // Fetch data file from storage (fileKey is now the actual URL)
-        const dataFileUrl = input.dataFileKey.startsWith('http') ? input.dataFileKey : `https://manus-storage.s3.amazonaws.com/${input.dataFileKey}`;
-        console.log('Fetching data file from storage for sending:', dataFileUrl);
-        
-        let dataFileResponse;
-        try {
-          dataFileResponse = await fetch(dataFileUrl);
-          if (!dataFileResponse.ok) {
-            throw new Error(`Failed to fetch file from S3: ${dataFileResponse.status} ${dataFileResponse.statusText}`);
-          }
-        } catch (fetchError) {
-          console.error('S3 fetch error:', fetchError);
-          throw new Error(`Failed to fetch data file from S3: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
-        }
-        
-        const dataFileBuffer = await dataFileResponse.arrayBuffer();
+        // Fetch data file from storage
+        console.log('Fetching data file from storage for sending:', input.dataFileKey);
+        const dataFileBuffer = await storageFetch(input.dataFileKey);
         if (!dataFileBuffer || dataFileBuffer.byteLength === 0) {
           throw new Error('Data file is empty or invalid');
         }
@@ -589,26 +576,19 @@ export const emailRouter = router({
         // Parse mapping file if provided
         let merchantEmailMapping: Record<string, string[]> = {};
         if (input.mappingFileKey) {
-          const mappingFileUrl = input.mappingFileKey.startsWith('http') ? input.mappingFileKey : `https://manus-storage.s3.amazonaws.com/${input.mappingFileKey}`;
-          console.log('Fetching mapping file from storage for sending:', mappingFileUrl);
-          
+          console.log('Fetching mapping file from storage for sending:', input.mappingFileKey);
           try {
-            const mappingFileResponse = await fetch(mappingFileUrl);
-            if (!mappingFileResponse.ok) {
-              console.warn(`Failed to fetch mapping file from S3: ${mappingFileResponse.status}`);
-            } else {
-              const mappingFileBuffer = await mappingFileResponse.arrayBuffer();
-              if (mappingFileBuffer && mappingFileBuffer.byteLength > 0) {
-                const mappingFileParsed = await parseExcelFile(Buffer.from(mappingFileBuffer));
-                if (mappingFileParsed.success && mappingFileParsed.sheetNames && mappingFileParsed.sheets) {
-                  const mappingSheetName = mappingFileParsed.sheetNames[0];
-                  const mappingData = mappingFileParsed.sheets[mappingSheetName] || [];
-                  merchantEmailMapping = buildMerchantEmailMapping(
-                    mappingData,
-                    input.merchantColumn,
-                    input.emailColumn
-                  );
-                }
+            const mappingFileBuffer = await storageFetch(input.mappingFileKey);
+            if (mappingFileBuffer && mappingFileBuffer.byteLength > 0) {
+              const mappingFileParsed = await parseExcelFile(mappingFileBuffer);
+              if (mappingFileParsed.success && mappingFileParsed.sheetNames && mappingFileParsed.sheets) {
+                const mappingSheetName = mappingFileParsed.sheetNames[0];
+                const mappingData = mappingFileParsed.sheets[mappingSheetName] || [];
+                merchantEmailMapping = buildMerchantEmailMapping(
+                  mappingData,
+                  input.merchantColumn,
+                  input.emailColumn
+                );
               }
             }
           } catch (mappingError) {

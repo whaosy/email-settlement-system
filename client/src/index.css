@@ -175,3 +175,40 @@
     }
   }
 }
+/* Rich Text Editor List Styles */
+.rich-text-editor-content ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.rich-text-editor-content ol {
+  list-style-type: decimal !important;
+  padding-left: 2rem !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.rich-text-editor-content li {
+  display: list-item !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.rich-text-editor-content h2 {
+  font-size: 1.5rem !important;
+  font-weight: bold !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.rich-text-editor-content pre {
+  background-color: #f1f5f9 !important;
+  padding: 1rem !important;
+  border-radius: 0.375rem !important;
+  font-family: monospace !important;
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}

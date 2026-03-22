@@ -131,12 +131,10 @@ export default function HistorySection() {
                         创建时间: {new Date(task.createdAt).toLocaleString('zh-CN')}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline">{task.status}</Badge>
-                        {task.successCount !== undefined && (
-                          <span className="text-sm text-slate-600">
-                            成功: {task.successCount}, 失败: {task.failureCount || 0}
-                          </span>
-                        )}
+                        <Badge variant="outline">{task.status === 'completed' ? '已完成' : task.status === 'sending' ? '发送中' : task.status === 'scheduled' ? '已定时' : '草稿'}</Badge>
+                        <span className="text-sm text-slate-600">
+                          成功: {task.successCount ?? 0}, 失败: {task.failureCount ?? 0}
+                        </span>
                       </div>
                     </div>
                     <Eye className="h-5 w-5 text-slate-400" />
@@ -296,42 +294,11 @@ export default function HistorySection() {
                           size="sm"
                           variant="ghost"
                           onClick={() => {
-                            const emailDetailHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
-                              <div style="background-color: white; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-                                <p style="margin: 0 0 10px 0;"><strong>邮件详细信息</strong></p>
-                                <table style="width: 100%; font-size: 14px;">
-                                  <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; font-weight: bold; color: #555; width: 100px;">收件人:</td>
-                                    <td style="padding: 8px 0;">${log.recipientEmail}</td>
-                                  </tr>
-                                  <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; font-weight: bold; color: #555;">主题:</td>
-                                    <td style="padding: 8px 0;">${log.subject || '未知'}</td>
-                                  </tr>
-                                  <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; font-weight: bold; color: #555;">状态:</td>
-                                    <td style="padding: 8px 0;"><span style="display: inline-block; padding: 4px 8px; border-radius: 4px; ${log.status === 'success' ? 'background-color: #d4edda; color: #155724;' : log.status === 'failed' ? 'background-color: #f8d7da; color: #721c24;' : 'background-color: #fff3cd; color: #856404;'}">${log.status || '未知'}</span></td>
-                                  </tr>
-                                  <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; font-weight: bold; color: #555;">发送时间:</td>
-                                    <td style="padding: 8px 0;">${log.sentAt ? new Date(log.sentAt).toLocaleString('zh-CN') : '未发送'}</td>
-                                  </tr>
-                                  <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; font-weight: bold; color: #555;">重试次数:</td>
-                                    <td style="padding: 8px 0;">${log.retryCount || 0}</td>
-                                  </tr>
-                                  ${log.errorMessage ? `<tr><td style="padding: 8px 0; font-weight: bold; color: #d32f2f;">错误信息:</td><td style="padding: 8px 0; color: #d32f2f;">${log.errorMessage}</td></tr>` : ''}
-                                </table>
-                              </div>
-                              <div style="background-color: #fff3cd; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107; color: #856404;">
-                                <p style="margin: 0; font-size: 13px;"><strong>注:</strong> 邮件正文内容在发送时不会保存到数据库中。如需查看原始邮件内容，请查看邮件模板配置。</p>
-                              </div>
-                            </div>`;
                             setSelectedEmail({
                               to: log.recipientEmail,
                               recipientName: log.recipientName || '未知',
                               subject: log.subject || '未知',
-                              html: emailDetailHtml,
+                              html: (log as any).emailContent || `<div class="p-4 text-slate-500 italic">未找到邮件正文内容。</div>`,
                               status: log.status,
                               sentTime: log.sentAt,
                               errorMessage: log.errorMessage,

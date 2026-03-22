@@ -428,10 +428,9 @@ export default function RichTextEditor({
         onInput={handleInput}
         onMouseUp={handleMouseUp}
         onKeyUp={handleKeyUp}
-        className={`${height} w-full p-4 outline-none overflow-auto text-sm text-slate-900 bg-white`}
+        className={`${height} w-full p-4 outline-none overflow-auto text-sm text-slate-900 bg-white rich-text-editor-content`}
         style={{
           minHeight: '200px',
-          whiteSpace: 'pre-wrap',
           wordWrap: 'break-word',
         }}
         data-placeholder={placeholder}
